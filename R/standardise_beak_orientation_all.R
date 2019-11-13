@@ -39,19 +39,17 @@ reorient_beak <- function(beak_file, cut_extraneous = TRUE, mesh_folder = "data/
   }
   
   
-  if(!file.exists(new_beak_file)) {
+  if(!file.exists(gsub(".obj", ".ply", new_beak_file, fixed = TRUE))) {
     
     beak_mesh <- try(readobj::read.obj(beak_file, convert.rgl = TRUE)[[1]])
+    suppressMessages(beak_landmarks <- try(readr::read_delim(file.path("data/landmarks/Markup_1", gsub(".obj", ".txt", bird_file, fixed = TRUE)), 
+                                                             " ",
+                                                             col_names = c("X", "Y", "Z"))))
     
-    if(inherits(beak_mesh, 'try-error')) {
+    if(inherits(beak_mesh, 'try-error') | inherits(beak_landmarks, 'try-error')) {
       readr::write_lines(bird_file, "data/bad_models.txt", append = TRUE)
     } else {
     
-      suppressMessages(beak_landmarks <- readr::read_delim(file.path("data/landmarks/Markup_1", gsub(".obj", ".txt", bird_file, fixed = TRUE)), 
-                                          " ",
-                                          col_names = c("X", "Y", "Z")))
-      
-      
       main_landmarks <- beak_landmarks[1:4, ] %>%
         as.matrix()
       
@@ -196,7 +194,7 @@ for(i in seq_along(beak_files)) {
 
 for(i in seq_along(beak_files)) {
   reorient_beak(beak_files[i], cut_extraneous = TRUE, mesh_folder = "data/ply_oriented_cut",
-                landmark_folder = "data/landmarks_oriented", plot_folder = "beak_plots_cut")
+                landmark_folder = "data/landmarks_oriented", plot_folder = NULL)
   gc()
   cat("Finished reorienting beak", i, "of", length(beak_files), "->", basename(beak_files[i]), "\n")
 }

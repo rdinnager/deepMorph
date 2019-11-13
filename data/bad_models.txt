@@ -1,0 +1,17 @@
+Busarellus_nigricollis_1.obj
+Cardellina_rubrifrons_1.obj
+Geothlypis_trichas_2.obj
+Meliphaga_albonotata_1.obj
+Busarellus_nigricollis_1.obj
+Cardellina_rubrifrons_1.obj
+Geothlypis_trichas_2.obj
+Meliphaga_albonotata_1.obj
+Nesospingus_speculiferus_1.obj
+Oporornis_formosus_1.obj
+Busarellus_nigricollis_1.obj
+Cardellina_rubrifrons_1.obj
+Geothlypis_trichas_2.obj
+Meliphaga_albonotata_1.obj
+Nesospingus_speculiferus_1.obj
+Oporornis_formosus_1.obj
+Setophaga_ruticilla_1.obj
