@@ -1,0 +1,8 @@
+Aeronautes_andecolus_1.obj
+Atticora_melanoleuca_1.obj
+Charitospiza_eucosma_1.obj
+Haplochelidon_andecola_1.obj
+Ilicura_militaris_1.obj
+Lathrotriccus_euleri_2.obj
+Neochelidon_tibialis_1.obj
+Ochthoeca_frontalis_2.obj
