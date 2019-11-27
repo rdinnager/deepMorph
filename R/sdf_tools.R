@@ -6,6 +6,6 @@ get_meshes_from_latent <- function(latent_code, voxel_res = 64L) {
   np <- reticulate::import("numpy")
   trimesh <- reticulate::import("trimesh")
   
-  sdf_net <- reticulate::import_from_path("sdf_net", "sdf/model")
+  sdf_net <- reticulate::import_from_path("sdf_net", "model")
   
 }

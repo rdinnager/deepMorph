@@ -3,9 +3,9 @@ library(Rvcg)
 library(readobj)
 library(rgl)
 
-beak_files <- list.files("data/objs/", full.names = TRUE) 
+beak_files <- list.files("data/objs", full.names = TRUE) 
 
-#beak_file <- beak_files[33]
+#beak_file <- beak_files[168]
 #plot_folder <- "beak_plots_trimmed"
 reorient_beak <- function(beak_file, cut_extraneous = TRUE, mesh_folder = "data/oriented_trimmed_meshes_obj",
                           landmark_folder = "data/landmarks_oriented", plot_folder = NULL) {
@@ -88,11 +88,11 @@ reorient_beak <- function(beak_file, cut_extraneous = TRUE, mesh_folder = "data/
       # rgl::shade3d(rot$mesh, alpha = 0.1)
       # rgl::lines3d(target_3, col = "red")
       # rgl::points3d(rot_landmarks, size = 4, col = "blue")
-      
+
       if(cut_extraneous) {
         
         beak_width <- abs(rot_landmarks[4, 2] - rot_landmarks[3, 2])
-        addit <- 0.01 * beak_width
+        addit <- 0.03 * beak_width
         
         ## plane made up of hind beak landmarks
         cut_plane_1 <- rot_landmarks[c(2, 4, 3), ] %>% as.matrix()
@@ -126,13 +126,19 @@ reorient_beak <- function(beak_file, cut_extraneous = TRUE, mesh_folder = "data/
                              rightmost - c(1, addit, 0),
                              rightmost - c(0, addit, -1))
         
+        ## approx 30 degree plane cutting away from beak tip and towards head and downwards
+        cut_plane_7 <- rbind(rot_landmarks[1, ] + addit, 
+                             c(-cos(0.5) + rot_landmarks[1, 1] + addit, 1, -1),
+                             c(-cos(0.5) + rot_landmarks[1, 1] + addit, -1, -1))
+        
         cut_1 <- Morpho::cutMeshPlane(cut_1, v1 = cut_plane_2[1, ], v2 = cut_plane_2[2, ], v3 = cut_plane_2[3, ])
         cut_1 <- Morpho::cutMeshPlane(cut_1, v1 = cut_plane_3[1, ], v2 = cut_plane_3[2, ], v3 = cut_plane_3[3, ])
         cut_1 <- Morpho::cutMeshPlane(cut_1, v1 = cut_plane_4[1, ], v2 = cut_plane_4[2, ], v3 = cut_plane_4[3, ])
         cut_1 <- Morpho::cutMeshPlane(cut_1, v1 = cut_plane_5[1, ], v2 = cut_plane_5[2, ], v3 = cut_plane_5[3, ])
         cut_1 <- Morpho::cutMeshPlane(cut_1, v1 = cut_plane_6[1, ], v2 = cut_plane_6[2, ], v3 = cut_plane_6[3, ])
+        cut_1 <- Morpho::cutMeshPlane(cut_1, v1 = cut_plane_7[1, ], v2 = cut_plane_7[2, ], v3 = cut_plane_7[3, ])
         
-        cut_1 <- Rvcg::vcgIsolated(cut_1, silent = TRUE, facenum = 0.1*ncol(cut_1$it))
+        cut_1 <- Rvcg::vcgIsolated(cut_1, silent = TRUE, facenum = 0.02*ncol(cut_1$it))
         
         # rgl::shade3d(cut_1, alpha = 0.1)
         # rgl::lines3d(target_3, col = "red")

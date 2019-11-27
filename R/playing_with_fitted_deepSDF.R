@@ -8,7 +8,7 @@ torch <- import("torch")
 np <- import("numpy")
 trimesh <- import("trimesh")
 
-sdf_net <- import_from_path("sdf_net", "sdf/model")
+sdf_net <- import_from_path("sdf_net", "model")
 
 latent_codes <- torch$load(sdf_net$LATENT_CODES_FILENAME)$to()
 
