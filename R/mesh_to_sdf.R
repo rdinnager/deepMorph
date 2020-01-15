@@ -169,3 +169,73 @@ max_norm <- max(norms)
 
 ##### Generate SDF samples for all meshes
 library(rtorch)
+
+meshes <- list.files("data/oriented_scaled_meshes_obj/", full.names = TRUE)
+
+mesh <- try(readobj::read.obj(meshes[23], convert.rgl = TRUE)[[1]])
+generate_sdf_sample <- function(mesh, sphere_rad = 1.5, sphere_centre = c(0.616886145, -0.001077347,  0.145010046),
+                                close_sample = 0.005, very_close_sample = 0.0005,
+                                n_pnts = 200000) {
+  
+  n_mesh <- n_pnts*0.4
+  mesh_sample <- Rvcg::vcgSample(mesh, SampleNum = n_mesh, type = "mc")
+  
+  n_circ <- n_pnts * 0.2
+  circ_sample <- matrix(runif((n_circ*2.5) * 3, -1, 1), ncol = 3)
+  norms <- apply(circ_sample, 1, function(x) sqrt(sum(x^2)))
+  circ_sample <- circ_sample[norms <= 1, ][1:n_circ, ]
+  circ_sample <- t(t(circ_sample) + sphere_centre) * sphere_rad
+  
+  samp <- rbind(mesh_sample + matrix(rnorm(n_mesh * 3, 0, close_sample), ncol = 3),
+                mesh_sample + matrix(rnorm(n_mesh * 3, 0, very_close_sample), ncol = 3),
+                circ_sample)
+  
+  sdf <- Rvcg::vcgClostKD(samp, mesh)
+  
+  pts <- Morpho::vert2points(mesh)
+  max_x <- which.max(pts[ , 1])
+  beak_tip <- pts[max_x, , drop = FALSE]
+  max_dist <- proxy::dist(beak_tip, pts[-max_x, ]) %>%
+    max()
+  
+  points_outside_sphere <- which(proxy::dist(samp, beak_tip)[ , 1] > max_dist)
+  
+  sphere <- Rvcg::vcgSphere(subdivision = 5) %>%
+    Morpho::scalemesh(max_dist) %>%
+    rgl::translate3d(beak_tip[1, 1], beak_tip[1, 2], beak_tip[1, 3])
+  
+  sdf_2 <- Rvcg::vcgClostKD(samp[points_outside_sphere, ], sphere)
+  
+  sdf$quality[points_outside_sphere] <- ifelse(sdf$quality[points_outside_sphere] > 0, sdf_2$quality, sdf$quality[points_outside_sphere])
+  
+  ## edit sdfs outside bounding box
+  
+  bbox_x <- range(pts[ , 1]) 
+  bbox_y <- range(pts[ , 2]) 
+  bbox_z <- range(pts[ , 3])
+  
+  sdf$quality <- ifelse(samp[ , 1] > bbox_x[2] & sdf$quality > 0, samp[ , 1] - bbox_x[2],
+         sdf$quality)
+  
+  # sdf$quality <- ifelse((samp[ , 1] < bbox_x[1] | samp[ , 1] > bbox_x[2]) & sdf$quality > 0, -pmin(abs(samp[ , 1] - bbox_x[1]), abs(samp[ , 1] - bbox_x[2])),
+  #                       sdf$quality)
+  
+  sdf$quality <- ifelse((samp[ , 2] < bbox_y[1] | samp[ , 2] > bbox_y[2]) & sdf$quality > 0, -pmin(abs(samp[ , 2] - bbox_y[1]), abs(samp[ , 2] - bbox_y[2])),
+         sdf$quality)
+  
+  sdf$quality <- ifelse((samp[ , 3] < bbox_z[1] | samp[ , 3] > bbox_z[2]) & sdf$quality > 0, -pmin(abs(samp[ , 3] - bbox_z[1]), abs(samp[ , 3] - bbox_z[2])),
+                        sdf$quality)
+  
+  rgl::points3d(samp, color = colourvalues::color_values(sdf$quality),
+                size = 5)
+  
+  sdf_df <- 
+  
+  rgl::points3d(samp, color = colourvalues::color_values(as.numeric(sdf$quality < 0)),
+                size = 5)
+  
+  rgl::points3d(samp, color = colourvalues::color_values(as.numeric((samp[ , 1] < bbox_x[1] | samp[ , 1] > bbox_x[2]) & sdf$quality > 0)),
+                size = 5)
+  
+  rgl::shade3d(sphere, alpha = 0.5, colour = "red")
+}

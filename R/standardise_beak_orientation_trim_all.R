@@ -316,7 +316,7 @@ reorient_beak_circle_trim <- function(beak_file, cut_extraneous = TRUE, mesh_fol
         cut_1 <- Rvcg::vcgClean(cut_1, c(0, 1, 2, 3, 4, 7, 1, 6, 1, 2, 3, 4, 7, 1), tol = 0.01, silent = TRUE, iterate = TRUE)
         
         
-        # mesh_dists_to_beaktip <- proxy::dist(Morpho::vert2points(cut_1), target_3[1, , drop = FALSE])
+        # mesh_dists_to_beaktip <- proxy  ::dist(Morpho::vert2points(cut_1), target_3[1, , drop = FALSE])
         # max_dist_mesh <- max(mesh_dists_to_beaktip, na.rm = TRUE)
         
         sphere <- Rvcg::vcgSphere(5) %>%
