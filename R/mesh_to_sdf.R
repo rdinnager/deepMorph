@@ -177,7 +177,7 @@ library(proxy)
 
 meshes <- list.files("data/oriented_scaled_meshes_obj/", full.names = TRUE)
 
-
+mesh_file <- meshes[100]
 generate_sdf_sample <- function(mesh_file, sphere_rad = 1.5, sphere_centre = c(0.616886145, -0.001077347,  0.145010046),
                                 close_sample = 0.005, very_close_sample = 0.0005,
                                 n_pnts = 200000, save_folder = "sdf") {
@@ -212,22 +212,31 @@ generate_sdf_sample <- function(mesh_file, sphere_rad = 1.5, sphere_centre = c(0
 
   #sdf$quality[points_outside_sphere] <- ifelse(sdf$quality[points_outside_sphere] > 0, sdf_2$quality, sdf$quality[points_outside_sphere])
   
-  ## edit sdfs outside bounding box
+  ## edit sdfs inside mesh:
+  ## First find any points inside mesh closer to sphere, reset those to sphere
 
   samp2 <- samp[sdf$quality >= 0, ]
   sdf_2 <- Rvcg::vcgClostKD(samp2, sphere)
   
+  sdf_val <- ifelse(sdf_2$quality < 0, sdf_2$quality, 
+                    ifelse(abs(sdf$quality[sdf$quality >= 0]) < abs(sdf_2$quality), sdf$quality[sdf$quality >= 0], sdf_2$quality))
+  
+  sdf$quality[sdf$quality >= 0] <- sdf_val
+  
+  ## Second if any point inside both mesh and sphere are closer to bounding box, reset sdf to bounding box
+  
+  samp3 <- samp[sdf$quality >= 0, ]
   
   bbox_x <- range(pts[ , 1]) 
   bbox_y <- range(pts[ , 2]) 
   bbox_z <- range(pts[ , 3])
   
-  dist_to_lower_x <- samp2[ , 1] - bbox_x[1]
-  dist_to_upper_x <- -samp2[ , 1] + bbox_x[2]
-  dist_to_lower_y <- samp2[ , 2] - bbox_y[1]
-  dist_to_upper_y <- -samp2[ , 2] + bbox_y[2]
-  dist_to_lower_z <- samp2[ , 3] - bbox_z[1]
-  dist_to_upper_z <- -samp2[ , 3] + bbox_z[2]
+  dist_to_lower_x <- samp3[ , 1] - bbox_x[1]
+  dist_to_upper_x <- -samp3[ , 1] + bbox_x[2]
+  dist_to_lower_y <- samp3[ , 2] - bbox_y[1]
+  dist_to_upper_y <- -samp3[ , 2] + bbox_y[2]
+  dist_to_lower_z <- samp3[ , 3] - bbox_z[1]
+  dist_to_upper_z <- -samp3[ , 3] + bbox_z[2]
   
   closest_x <- ifelse(abs(dist_to_lower_x) < abs(dist_to_upper_x), dist_to_lower_x, dist_to_upper_x)
   closest_y <- ifelse(abs(dist_to_lower_y) < abs(dist_to_upper_y), dist_to_lower_y, dist_to_upper_y)
@@ -238,14 +247,19 @@ generate_sdf_sample <- function(mesh_file, sphere_rad = 1.5, sphere_centre = c(0
   
   closest_bbox <- ifelse(closest_x >= 0 & closest_y >= 0 & closest_z >= 0, closest_bbox, -closest_bbox)
   
+  # rgl::points3d(samp3, color = colourvalues::color_values(as.numeric(closest_bbox >= 0)))
   # rgl::points3d(pts)
   # axes3d()
   # rgl::points3d(samp2, color = colourvalues::color_values(as.numeric(closest_bbox >= 0)))
   
-  sdf_val <- ifelse(abs(sdf$quality[sdf$quality >= 0]) < abs(sdf_2$quality), sdf$quality[sdf$quality >= 0], sdf_2$quality)
-  sdf_val <- ifelse(abs(sdf_val) < abs(closest_bbox), sdf_val, closest_bbox) 
+  sdf_val <- ifelse(closest_bbox < 0, closest_bbox, 
+                    ifelse(abs(sdf$quality[sdf$quality >= 0]) < abs(closest_bbox), sdf$quality[sdf$quality >= 0], closest_bbox))
   
+  #sdf_val <- ifelse(abs(sdf$quality[sdf$quality >= 0]) < abs(closest_bbox), sdf$quality[sdf$quality >= 0], closest_bbox)
   sdf$quality[sdf$quality >= 0] <- sdf_val
+  #sdf_val <- ifelse(abs(sdf_val[]) < abs(closest_bbox), sdf_val, closest_bbox) 
+  
+  #sdf$quality[sdf$quality >= 0] <- sdf_val
   
   # sdf$quality <- ifelse(samp[ , 1] > bbox_x[2] & sdf$quality > 0, samp[ , 1] - bbox_x[2],
   #        sdf$quality)
@@ -266,7 +280,7 @@ generate_sdf_sample <- function(mesh_file, sphere_rad = 1.5, sphere_centre = c(0
   samp_new <- t(t(samp) - sphere_centre) * (1 / sphere_rad)
   
   sdf_df <- tibble::tibble(x = samp_new[ , 1], y = samp_new[ , 2], z = samp_new[ , 3],
-                           sdf = sdf$quality)
+                           sdf = -sdf$quality)
   
   readr::write_csv(sdf_df, file.path(save_folder, basename(mesh_file)))
   
@@ -288,12 +302,12 @@ sdf_files <- furrr::future_map(meshes, ~try(generate_sdf_sample(.x, save_folder 
 
 
 ## test some random ones out
-sdf_1 <- readr::read_csv("data/sdf/Cardinalis_sinuatus_1.obj")
+sdf_1 <- readr::read_csv("data/sdf/Tricholestes_criniger_1.obj")
 rgl::points3d(sdf_1[ , 1:3] %>% as.matrix(), color = colourvalues::color_values(sdf_1$sdf))
-axes3d()
+rgl::axes3d()
 
 rgl::points3d(sdf_1[ , 1:3] %>% as.matrix(), color = colourvalues::color_values(as.numeric(sdf_1$sdf >= 0)))
-axes3d()
+rgl::axes3d()
 
 ########## combine sdf samples into one torch file #################
 library(reticulate)
@@ -314,11 +328,18 @@ all_sdf <- furrr::future_map_dfr(csvs, ~readr::read_csv(.x, col_types = cols(
 )), .progress = TRUE)
 
 torch <- reticulate::import("torch")
+scipy <- reticulate::import("scipy.spatial.transform")
 
-coords <- torch$tensor(reticulate::np_array(all_sdf[, 1:3] %>% as.matrix, dtype = "float32"))
+rot_1 <- scipy$Rotation$from_euler('y', 90, degrees = TRUE)$as_dcm()
+rot_2 <- scipy$Rotation$from_euler('x', -90, degrees = TRUE)$as_dcm()
+rot <- rot_1 %*% rot_2
+#rot <- scipy$Rotation$from_euler('x', -90, degrees = TRUE)$as_dcm()
+
+coord_mat <- t(rot %*% t(all_sdf[, 1:3] %>% as.matrix))
+coords <- torch$tensor(reticulate::np_array(coord_mat, dtype = "float32"))
 torch$save(coords, "data/torch/sdf_points.to")
 
-values <- torch$tensor(reticulate::np_array(-all_sdf$sdf, dtype = "float32"))
+values <- torch$tensor(reticulate::np_array(all_sdf$sdf, dtype = "float32"))
 torch$save(values, "data/torch/sdf_values.to")
 
 test <- torch$load("/data/dinnage/Projects/shapegan/data/sdf_points.to")
