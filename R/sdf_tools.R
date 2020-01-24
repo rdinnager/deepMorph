@@ -1,6 +1,6 @@
 setup_SDF <- function() {
   current_wd <- getwd()
-  setwd(file.path(current_wd, "sdf"))
+  #setwd(file.path(current_wd, "sdf"))
   
   torch <<- reticulate::import("torch")
   np <<- reticulate::import("numpy")
