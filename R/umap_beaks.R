@@ -6,6 +6,12 @@ library(directlabels)
 library(plotly)
 library(purrr)
 library(rgl)
+library(ape)
+library(mapdeck)
+library(furrr)
+library(RRphylo)
+
+reticulate::use_condaenv("tf-gpu", required = TRUE)
 
 np <- import("numpy")
 torch <- import("torch")
@@ -15,6 +21,8 @@ meta <- readr::read_csv("data/resource.csv")
 taxo <- readr::read_csv("data/Jetz/2012-03-04206D-master_taxonomy.csv")
 #file_names <- readr::read_lines("Marian_results/filenames.txt")
 file_names <- list.files("data/sdf")
+
+tree <- ape::read.tree("data/phylogenies/Stage2_MayrParSho_Ericson_set1_decisive.tre")
 
 latent_codes <- (torch$load("models/sdf_net_latent_codes.to") %>%
   torch$Tensor$cpu())$detach()$numpy()
@@ -91,6 +99,9 @@ pl
 source("R/sdf_tools.R")
 setup_SDF()
 
+test <- get_meshes_from_latent(latent_codes[100, ], show = TRUE)
+test <- get_meshes_from_latent(latent_codes[1845, ], show = TRUE, voxel_res = 256L)
+
 test <- get_meshes_from_latent(dat$latent_code[[4]], show = TRUE)
 test2 <- get_meshes_from_latent(dat$latent_code[[100]], show = TRUE, voxel_res = 128L)
 test3 <- get_meshes_from_latent(dat$latent_code[[800]], show = TRUE, voxel_res = 128L)
@@ -101,3 +112,21 @@ dat <- dat %>%
 rgl::shade3d(dat$recon_mesh[[100]], col = "#d2b232")
 
 readr::write_rds(dat, "data/latent_code_reconstructions.rds", compress = "gz")
+
+future::plan(future::multiprocess())
+
+# dat <- dat %>%
+#   dplyr::mutate(recon_mesh_256 = furrr::future_map(latent_code, 
+#                                                    ~get_meshes_from_latent(.x, voxel_res = 256L),
+#                                                    .progress = TRUE))
+
+dat <- dat %>%
+  dplyr::mutate(recon_mesh_256 = pbapply::pblapply(latent_code, get_meshes_from_latent, voxel_res = 256L))
+readr::write_rds(dat, "data/latent_code_reconstructions2.rds", compress = "gz")
+
+rgl::shade3d(dat$recon_mesh_256[[100]], col = "#d2b232")
+
+dat <- readr::read_rds("data/latent_code_reconstructions.rds")
+
+test <- get_meshes_from_latent(dat$latent_code[[10]], voxel_res = 256L)
+rgl::shade3d(test, col = "#d2b232")
